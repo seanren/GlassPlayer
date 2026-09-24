@@ -6,6 +6,10 @@
 
 GlassPlayer is a small macOS app that plays YouTube in a see-through, floating window. You can watch a video in a corner of your screen while you work in other apps.
 
+![GlassPlayer playing a video on top of a terminal window. The code in the terminal shows through the video.](docs/screenshot.png)
+
+<sub>Video in screenshot: Calm City on YouTube.</sub>
+
 ## Features
 
 - **See-through window:** set the opacity anywhere from 10% to 100%.
