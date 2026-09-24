@@ -1,0 +1,7 @@
+.build/
+.swiftpm/
+*.app
+AppIcon.iconset/
+.DS_Store
+.claude/
+.qoder/
