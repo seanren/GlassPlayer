@@ -4,7 +4,9 @@ class PlayerWindow: NSWindow {
 
     private var clickThroughEnabled = false
     private var observers: [Any] = []
-    var videoAspectRatio: Double?
+    var videoAspectRatio: Double? {
+        didSet { updateResizeConstraint() }
+    }
 
     override var canBecomeKey: Bool { !clickThroughEnabled }
     override var canBecomeMain: Bool { !clickThroughEnabled }
@@ -45,6 +47,18 @@ class PlayerWindow: NSWindow {
 
     deinit {
         observers.forEach { NotificationCenter.default.removeObserver($0) }
+    }
+
+    // Keeps the video's shape while the user drags any edge or corner. Without it,
+    // snapToAspectRatio recomputes the height from the width on release, so a drag
+    // on the top or bottom edge snapped straight back to the old size.
+    private func updateResizeConstraint() {
+        if let ratio = videoAspectRatio, ratio > 0 {
+            contentAspectRatio = NSSize(width: ratio, height: 1)
+        } else {
+            // Setting resize increments clears the aspect-ratio constraint.
+            contentResizeIncrements = NSSize(width: 1, height: 1)
+        }
     }
 
     func snapToAspectRatio() {
