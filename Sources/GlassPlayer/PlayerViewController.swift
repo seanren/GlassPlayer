@@ -18,6 +18,7 @@ class PlayerViewController: NSViewController {
     private(set) var webView: WKWebView!
     private var controlBar: ControlBarView!
     private var dragHandle: WindowDragView!
+    private var resizeHandles: [ResizeHandleView] = []
     private var trackingArea: NSTrackingArea?
     private var popupWindows: [NSWindow] = []
 
@@ -37,6 +38,7 @@ class PlayerViewController: NSViewController {
         setupWebView()
         setupDragHandle()
         setupControlBar()
+        setupResizeHandles()
     }
 
     override func viewDidLoad() {
@@ -49,6 +51,7 @@ class PlayerViewController: NSViewController {
         webView.frame = view.bounds
         layoutDragHandle()
         layoutControlBar()
+        layoutResizeHandles()
         updateTrackingArea()
     }
 
@@ -381,6 +384,21 @@ class PlayerViewController: NSViewController {
         controlBar.frame = NSRect(x: 0, y: view.bounds.height - barHeight, width: view.bounds.width, height: barHeight)
     }
 
+    // MARK: - Resize Handles
+
+    // Added last so the handles sit above the web view and the control bar.
+    private func setupResizeHandles() {
+        resizeHandles = ResizeEdges.allHandles.map { ResizeHandleView(edges: $0) }
+        resizeHandles.forEach { view.addSubview($0) }
+        layoutResizeHandles()
+    }
+
+    private func layoutResizeHandles() {
+        for handle in resizeHandles {
+            handle.frame = ResizeHandleView.handleFrame(for: handle.edges, in: view.bounds)
+        }
+    }
+
     // MARK: - Hover tracking
 
     private func updateTrackingArea() {
@@ -483,7 +501,7 @@ extension PlayerViewController: WKScriptMessageHandler {
         let newRatio = width / height
         window.videoAspectRatio = newRatio
 
-        if window.inLiveResize { return }
+        if window.inLiveResize || window.isUserResizing { return }
         window.snapToAspectRatio()
     }
 }

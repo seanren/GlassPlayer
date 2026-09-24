@@ -3,6 +3,7 @@ import AppKit
 class PlayerWindow: NSWindow {
 
     private var clickThroughEnabled = false
+    private(set) var isUserResizing = false
     private var observers: [Any] = []
     var videoAspectRatio: Double? {
         didSet { updateResizeConstraint() }
@@ -21,7 +22,9 @@ class PlayerWindow: NSWindow {
             defer: false
         )
         isOpaque = false
-        backgroundColor = .clear
+        // Nearly (not fully) clear: macOS passes clicks on fully transparent pixels to
+        // the window below, which made the rounded corners impossible to grab.
+        backgroundColor = NSColor(white: 0, alpha: 0.01)
         hasShadow = true
         isMovableByWindowBackground = true
         minSize = NSSize(width: 320, height: 200)
@@ -59,6 +62,62 @@ class PlayerWindow: NSWindow {
             // Setting resize increments clears the aspect-ratio constraint.
             contentResizeIncrements = NSSize(width: 1, height: 1)
         }
+    }
+
+    func beginUserResize() {
+        isUserResizing = true
+    }
+
+    func endUserResize() {
+        isUserResizing = false
+        snapToAspectRatio()
+    }
+
+    // Resizes from a drag on a ResizeHandleView. The opposite edge stays put and the
+    // window keeps the video's shape, within the minimum size and the screen.
+    func resize(from start: NSRect, edges: ResizeEdges, by delta: NSPoint) {
+        var width = start.width
+        var height = start.height
+        if edges.contains(.left) { width -= delta.x }
+        if edges.contains(.right) { width += delta.x }
+        if edges.contains(.bottom) { height -= delta.y }
+        if edges.contains(.top) { height += delta.y }
+        width = max(width, 1)
+        height = max(height, 1)
+
+        let maxSize = (screen ?? NSScreen.main)?.visibleFrame.size
+            ?? NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
+
+        if let ratio = videoAspectRatio.map({ CGFloat($0) }), ratio > 0 {
+            // An edge drives the other side; a corner follows whichever side moved further.
+            if edges.isHorizontal && (!edges.isVertical || width / ratio >= height) {
+                height = width / ratio
+            } else {
+                width = height * ratio
+            }
+            // Scale both sides together so the limits don't change the shape.
+            let scaleUp = max(minSize.width / width, minSize.height / height, 1)
+            width *= scaleUp
+            height *= scaleUp
+            let scaleDown = min(maxSize.width / width, maxSize.height / height, 1)
+            width *= scaleDown
+            height *= scaleDown
+        } else {
+            width = min(max(width, minSize.width), maxSize.width)
+            height = min(max(height, minSize.height), maxSize.height)
+        }
+
+        let x: CGFloat
+        if edges.contains(.left) {
+            x = start.maxX - width
+        } else if edges.contains(.right) {
+            x = start.minX
+        } else {
+            x = start.midX - width / 2
+        }
+        let y = edges.contains(.top) ? start.minY : start.maxY - height
+
+        setFrame(NSRect(x: x, y: y, width: width, height: height), display: true)
     }
 
     func snapToAspectRatio() {
